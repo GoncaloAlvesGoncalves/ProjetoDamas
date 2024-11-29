@@ -1,6 +1,6 @@
 public class Damas {
     private char[][] path; // Representação do tabuleiro
-    public int selectLine, selectCol; // Peça selecionada
+    public int selectLine, selectCol; // Peça selecionada (linha e coluna)
     private boolean player; // Jogador atual (true = brancas, false = pretas)
 
     Damas() {
@@ -17,8 +17,12 @@ public class Damas {
     }
 
     // Retorna o jogador atual
-    public boolean Player() {
+    public boolean getPlayer() {
         return player;
+    }
+    
+    public void setPlayer(boolean b) {
+    	player = b;
     }
 
     // Verifica se a peça na posição pertence ao jogador atual
@@ -36,7 +40,7 @@ public class Damas {
         path[l][c] = n;
     }
 
-    // Move uma peça, com suporte para captura
+    // Move uma peça
     public void moverPeca(int l, int c, int newL, int newC) {
         int meioL = (l + newL) / 2;
         int meioC = (c + newC) / 2;
@@ -67,7 +71,6 @@ public class Damas {
             int direcaoC = (newC > c) ? 1 : -1;
             int atualL = l + direcaoL;
             int atualC = c + direcaoC;
-
             while (atualL != newL && atualC != newC) {
                 char peca = getValue(atualL, atualC);
                 if ((player && (peca == 'b' || peca == 'B')) || (!player && (peca == 'w' || peca == 'W'))) {
@@ -80,11 +83,8 @@ public class Damas {
                 atualL += direcaoL;
                 atualC += direcaoC;
             }
-        }
-        
-
-        // Muda o jogador após o movimento
-        player = !player;
+        } 
+        player = !player; // Muda o jogador após o movimento
     }
 
     // Seleciona uma peça
@@ -136,6 +136,28 @@ public class Damas {
         }
         return false;
     }
+    
+    // Ve quem ganhou
+    public String msgWin() {
+    	int countB =0,countW = 0;
+    	for(int l = 0 ; l<8;l++) {
+        	for(int c = 0 ; c<8;c++) {
+        		if(this.getValue(l, c) == 'b' || this.getValue(l, c) == 'B') {
+        			countB++;
+        		}
+        		if(this.getValue(l, c) == 'w' || this.getValue(l, c) == 'W') {
+        			countW++;
+        		}
+        	}
+    	}
+    	if(countB == 0) {
+    		return "As pecas Brancas Ganharam";
+    	}
+    	if(countW == 0) {
+    		return "As pecas Pretas Ganharam";
+    	}
+    	return "Empate";
+    }
 
     // Verifica se uma peça tem movimentos válidos
     public boolean temMovimentoValido(int l, int c) {
@@ -158,7 +180,6 @@ public class Damas {
         }
         return capturaObrigatoriaDama();
     }
-
 
     // Verifica se uma peça pode realizar capturas
     public boolean temCapturasDisponiveis(int l, int c) {
@@ -228,7 +249,7 @@ public class Damas {
 
     }
     
- // Verifica se uma dama tem capturas obrigatórias
+    // Verifica se uma dama tem capturas obrigatórias
     public boolean capturaObrigatoriaDama() {
         for (int l = 0; l < 8; l++) {
             for (int c = 0; c < 8; c++) {

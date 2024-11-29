@@ -1,22 +1,19 @@
 import pt.iscte.guitoo.Color;
 import pt.iscte.guitoo.StandardColor;
 import pt.iscte.guitoo.board.Board;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import javax.swing.Timer;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Scanner;
 
 public class View {
     Board board; // Interface gráfica do tabuleiro
     Damas damas; // Lógica do jogo
-    Map<String, Damas> saveGames = new HashMap<>(); // Jogos salvos
     Timer autoTimer;
-
     
     // Construtor da interface
     View(Damas damas) {
@@ -31,7 +28,7 @@ public class View {
 
     // Atualiza o título com base no jogador atual
     void atualizarTitulo() {
-        String titulo = damas.Player() ? "Jogo das Damas: Brancas a Jogar" : "Jogo das Damas: Pretas a Jogar";
+        String titulo = damas.getPlayer() ? "Jogo das Damas: Brancas a Jogar" : "Jogo das Damas: Pretas a Jogar";
         board.setTitle(titulo);
     }
 
@@ -40,7 +37,8 @@ public class View {
         char valor = damas.getValue(line, col);
         return valor == 'b' ? "black.png" : valor == 'w' ? "white.png": valor == 'B' ? "d_black.png": valor == 'W' ? "d_white.png" : null;
     }
-
+    
+    // ve o click
     void click(int line, int col) {
         if (damas.Jogadas()) {
             if (damas.isPlayer(line, col)) {
@@ -58,10 +56,9 @@ public class View {
                 board.refresh();
             } 
         } else {
-        	board.showMessage("Fim de jogo!");
+        	board.showMessage(damas.msgWin());
         }
     }
-
 
     // Define as cores do tabuleiro (pretas, brancas, seleções e movimentos válidos)
     Color background(int line, int col) {
@@ -94,7 +91,7 @@ public class View {
     // Jogada aleatória
     void random() {
         if (!damas.Jogadas()) {
-        	board.showMessage("Fim de jogo!");
+        	board.showMessage(damas.msgWin());
             return;
         }
 
@@ -140,7 +137,7 @@ public class View {
                     } else {
     					((Timer) e.getSource()).stop(); // Para o timer quando o jogo termina
     					autoTimer = null; // Limpa a referência ao timer
-                    	board.showMessage("Fim de jogo!");
+                    	board.showMessage(damas.msgWin());
                     }
                 }
             });
@@ -184,7 +181,13 @@ public class View {
 		            			}
 		                    	
 		            		}
-		            		writer.write("\n");
+	            			writer.write("\n");
+		            	}
+		            	if(damas.getPlayer()) {
+		            		writer.write('t');
+		            	}
+		            	else {
+		            		writer.write('f');
 		            	}
 		            	writer.close();
 		            	board.showMessage("Jogo salvo com sucesso!");
@@ -204,7 +207,7 @@ public class View {
 	        }
         }
     }
-    
+    // veridica se o nome do jogo é valido
     public boolean nomeValido(String nomeArquivo) {
         // Verificar caracteres inválidos com base em restrições comuns
         String caracteresInvalidos = "[<>:\"/\\\\|?*.]"; //caracteres proibidos
@@ -226,43 +229,92 @@ public class View {
         }
     }
     
-    /////////////
-    // POR VER //
-    /////////////
-    
     // Carregar jogo
     void load() {
     	String nome = board.promptText("Nome do jogo:");
-    	Damas newDamas = new Damas();
-        try {
-        	Scanner s = new Scanner(new File("src/files/"+nome+".txt"));
-        	System.out.print(s.next().length());
-
-        	for(int j = 0 ; j < 8; j++) {
-            	String linha = s.next();
-            	for(int i = 0 ; i < linha.length();i++) {
-            		newDamas.setValue(j, i, linha.charAt(i));
-                	//System.out.print((linha.charAt(i)));
+    	// verifica se o nome é null ou se é vazio
+    	if(nome != null && !nome.trim().isEmpty()) {
+    		Damas newDamas = new Damas();
+        	String nameFile = "src/files/"+nome+".txt";
+            try {
+            	if(ValidarFile(nameFile)) {
+                	Scanner scanner = new Scanner(new File(nameFile));
+    	        	for(int j = 0 ; j < 8; j++) {
+    	            	String linha = scanner.next();
+    	            	for(int i = 0 ; i < 8;i++) {
+    	            		// verifica se o caracter é uma 'b', 'B', 'w', 'W,
+    	            		if(linha.charAt(i) == 'b' || linha.charAt(i) == 'B' || linha.charAt(i) == 'w' || linha.charAt(i) == 'W') {
+    	            			newDamas.setValue(j, i, linha.charAt(i));
+    	            		}
+    	            		else {
+    	            			newDamas.setValue(j, i, '\0'); // caso contrario independente do valor guarda como null ('\0')
+    	            		}
+    	            	}
+    	        	}
+    	        	String lastLine = scanner.next();
+    	        	boolean b = true;
+    	        	if(lastLine.equals("f")) {
+    	        		b = false;
+    	        	}
+    	        	newDamas.setPlayer(b);
+    	        	new View(newDamas).start();
+    	        	scanner.close();
             	}
-            	//System.out.print("\n");
-        	}
-        	new View(newDamas).start();
-
-        }
-        catch(Exception e) {
-        	System.err.println(e);
-        }
+            }
+            catch(Exception e) {
+            	System.err.println(e);
+            }
+    	}
     	
-    	
-    	
-    	/*
-    	
-        if (!saveGames.containsKey(nome)) {
-            board.showMessage("O jogo com o nome " + nome + " não existe.");
-            load();
-            return;
-        }
-        new View(saveGames.get(nome)).start();*/
+    }
+    
+    // Verifica se a estrotura do ficheiro é valido
+    boolean ValidarFile(String nameFile) {
+    	 int wCount = 0, bCount = 0;
+         try (Scanner s = new Scanner(new File(nameFile))) {
+             int lineCount = 0;
+             while (s.hasNextLine()) {
+                 String line = s.nextLine();
+                 if(lineCount < 8) {
+                     for (int col = 0; col < 8; col++) {
+                         char c = line.charAt(col);
+                         // Verifica se (linha + coluna) é par e o caractere é '0'
+                         if ((lineCount + col) % 2 == 0) {
+                             if (c != '0') {
+                         		board.showMessage("Ficheiro invalido");
+                                 return false;
+                             }
+                         } 
+                         else {
+                             // Conta os caracteres ('w', 'W') e ('b', 'B')
+                             if (c == 'w' || c == 'W') 
+                                 wCount++;
+                             if (c == 'b' || c == 'B')
+                                 bCount++;
+                         }
+                     }
+                 }
+                 else {
+                	 if(line.length()!= 1 && (!line.contains("t") && !line.contains("f"))) {
+                 		board.showMessage("Ficheiro invalido");
+	                	 return false;
+	                 }
+                	 break;
+                 }
+                 lineCount++;
+             }
+             // Verifica se há menos de 9 linhas (8 linhas do tabuleiro + 1 do jpgador); Verifica o máximo de 'w' e 'b' possiveis (12 cada)
+             if (lineCount < 8 || wCount > 12 || bCount >12) {
+         		board.showMessage("Ficheiro invalido");
+                 return false;
+             }
+             s.close();
+         } catch (FileNotFoundException e) {
+     		 board.showMessage("Não existe nenhum ficheiro com esse nome");
+        	 return false;
+         }
+         // Se todas as verificações forem satisfeitas
+         return true;
     }
 
     // Inicia a interface gráfica
